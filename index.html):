@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Fila Virtual Oficial v1.0.4</title>
+    <style>
+        /* Estilo visual de página de gobierno vieja y aburrida */
+        body {
+            background-color: #e0e0e0;
+            font-family: "Courier New", Courier, monospace;
+            text-align: center;
+            padding: 50px 20px;
+            color: #333;
+            user-select: none; /* Evita que seleccionen el texto */
+        }
+        .contenedor {
+            background: #ffffff;
+            border: 3px dashed #666;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 30px;
+            box-shadow: 10px 10px 0px #999;
+        }
+        h1 {
+            font-size: 4.5rem;
+            margin: 20px 0;
+            color: #bd2130;
+            letter-spacing: -2px;
+        }
+        .alerta {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #ffc107;
+            border: 4px solid #000;
+            padding: 30px;
+            z-index: 1000;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+        button {
+            background: #000;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-family: inherit;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #333;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="contenedor">
+        <p><strong>MINISTERIO DE TRÁMITES INÚTILES</strong></p>
+        <p style="font-size: 0.8rem; color: #666;">Conectado al Servidor Central: OK</p>
+        <hr>
+        <p>Por favor, no cierre esta ventana.<br>Su posición actual en la fila es:</p>
+        
+        <h1 id="numero-turno">4521</h1>
+        
+        <p id="mensaje-estado">Tiempo estimado de espera: 14 horas 42 minutos.</p>
+        <p style="font-size: 0.75rem; color: #888;">Por razones de seguridad, manténgase activo en la página.</p>
+    </div>
+
+    <!-- Ventana flotante de alerta de inactividad -->
+    <div id="ventana-alerta" class="alerta">
+        <h3>🚨 ¡ALERTA DE INACTIVIDAD! 🚨</h3>
+        <p>Detectamos que no se está moviendo. Haga clic abajo para mantener su lugar en la fila.</p>
+        <button onclick="salvarTurno()">SEGUIR ESPERANDO</button>
+    </div>
+
+    <script>
+        let turnoInicial = 4521;
+        let turnoActual = turnoInicial;
+        
+        const elementoTurno = document.getElementById('numero-turno');
+        const elementoMensaje = document.getElementById('mensaje-estado');
+        const ventanaAlerta = document.getElementById('ventana-alerta');
+
+        let tiempoInactivo = 0;
+        let alertaActiva = false;
+
+        // 1. Simulación del avance de la fila (Baja un número cada 4 segundos para pruebas rápido)
+        // Nota: Si quieres que sea más desesperante en tu versión web final, cambia 4000 por 20000 o 30000
+        const intervaloFila = setInterval(() => {
+            if (!alertaActiva && turnoActual > 1) {
+                turnoActual--;
+                elementoTurno.innerText = turnoActual;
+                
+                // Variar el mensaje de tiempo aleatoriamente para dar realismo aburrido
+                if(turnoActual % 5 === 0) {
+                    let horas = Math.floor(turnoActual / 300);
+                    let minutos = Math.floor((turnoActual % 300) / 5);
+                    elementoMensaje.innerText = `Tiempo estimado de espera: ${horas} horas ${minutos} minutos.`;
+                }
+            } else if (turnoActual === 1) {
+                // El final trágico al llegar al número 1
+                clearInterval(intervaloFila);
+                clearInterval(intervaloInactividad);
+                elementoTurno.innerText = "ERROR 502";
+                elementoMensaje.innerHTML = "<strong style='color:red;'>La sesión ha expirado por tiempo límite del servidor. El trámite no pudo ser completado. Por favor, vuelva a intentarlo mañana.</strong>";
+            }
+        }, 4000);
+
+        // 2. Sistema de detección de inactividad (Suma 1 segundo cada segundo)
+        const intervaloInactividad = setInterval(() => {
+            if (!alertaActiva) {
+                tiempoInactivo++;
+                // Si pasa 7 segundos quieto, se dispara la alerta molesta
+                if (tiempoInactivo >= 7) {
+                    dispararAlerta();
+                }
+            }
+        }, 1000);
+
+        // Si el usuario mueve el mouse o toca la pantalla, el contador de inactividad se reinicia a cero
+        window.onmousemove = window.onkeypress = window.ontouchstart = function() {
+            if (!alertaActiva) {
+                tiempoInactivo = 0;
+            }
+        };
+
+        function dispararAlerta() {
+            alertaActiva = true;
+            ventanaAlerta.style.display = 'block';
+            
+            // Si en 4 segundos de reloj no hace clic en el botón de la alerta, pierde el turno
+            window.tiempoLimiteAlerta = setTimeout(() => {
+                perderTurno();
+            }, 4000);
+        }
+
+        function salvarTurno() {
+            alertaActiva = false;
+            tiempoInactivo = 0;
+            ventanaAlerta.style.display = 'none';
+            clearTimeout(window.tiempoLimiteAlerta);
+        }
+
+        function perderTurno() {
+            ventanaAlerta.style.display = 'none';
+            alertaActiva = false;
+            tiempoInactivo = 0;
+            turnoActual = turnoInicial; // Vuelve al principio
+            elementoTurno.innerText = turnoActual;
+            elementoMensaje.innerHTML = "<span style='color:orange;'>¡Perdió su lugar por inactividad! Ha sido enviado al final de la fila.</span>";
+            
+            // Regresa al mensaje normal después de 5 segundos
+            setTimeout(() => {
+                elementoMensaje.innerText = "Tiempo estimado de espera: 14 horas 42 minutos.";
+            }, 5000);
+        }
+    </script>
+
+</body>
+</html>
